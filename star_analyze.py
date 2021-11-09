@@ -145,8 +145,9 @@ def get_cartesian(xloc, yloc, major_axis, angle):
 mosaic_cat = ascii.read(args.cat) # CATALOG
 header = mosaic_cat.meta['comments']
 mosaic_cat = Table(mosaic_cat, names=['ID','RA', 'DEC', 'F160W', 'HLR', 'FWHM'])
+#mosaic_cat = Table(mosaic_cat, names=['RA', 'DEC', 'FLAGS', 'CLASS_STAR', 'F160W', 'HLR'])
 mosaic = fits.open(args.fname)[0].data # IMAGE
-wmos = WCS(fits.open(uds_mosaic_candels)[0].header) # WCS
+wmos = WCS(fits.open(args.fname)[0].header) # WCS
 s = 31 # Postage stamp size
 w = s // 2 # Half the postage stamp
 
