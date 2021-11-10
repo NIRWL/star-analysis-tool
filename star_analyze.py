@@ -368,5 +368,5 @@ plt.savefig('star_whisker_CANDELS.jpg', bbox_inches='tight', dpi=200)
 
 # Create a table of the good stars that can be used later to compare with PSF model shapes.
 tab = Table([good_stars['ID'], good_stars['RA'], good_stars['DEC'], good_stars['X'], good_stars['Y'], e1s, e2s], names=['ID', 'RA', 'DEC', 'X', 'Y', 'E1', 'E2'])
-tab.write('UDS_bomee_stars_ell_table.fits', overwrite=True)
+tab.write('UDS_stars_constrained_table.fits', overwrite=True)
 """
