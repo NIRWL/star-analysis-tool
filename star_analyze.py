@@ -139,13 +139,12 @@ def get_cartesian(xloc, yloc, major_axis, angle):
 
     return x_ends, y_ends
 
-#uds_cat = '/media/data01/NIRWL/analysis/UDS/CANDELS.UDS.v1_1.star.cand.wtf160w.radec.more.dat' # CANDELS CATALOG
-#uds_mosaic_candels = '/media/data01/NIRWL/analysis/UDS/uds_all_wfc3_f160w_060mas_v1.0_drz.fits' # CANDELS MOSAIC
-
 mosaic_cat = ascii.read(args.cat) # CATALOG
 header = mosaic_cat.meta['comments']
-mosaic_cat = Table(mosaic_cat, names=['ID','RA', 'DEC', 'F160W', 'HLR', 'FWHM'])
-#mosaic_cat = Table(mosaic_cat, names=['RA', 'DEC', 'FLAGS', 'CLASS_STAR', 'F160W', 'HLR'])
+if len(mosaic_cat.colnames) == 7:
+    mosaic_cat = Table(mosaic_cat, names=['ID','RA', 'DEC', 'F160W', 'FLAGS', 'HLR', 'FWHM'])
+else:
+    mosaic_cat = Table(mosaic_cat, names=['ID','RA', 'DEC', 'F160W', 'HLR', 'FWHM'])
 mosaic = fits.open(args.fname)[0].data # IMAGE
 wmos = WCS(fits.open(args.fname)[0].header) # WCS
 s = 31 # Postage stamp size
