@@ -26,8 +26,8 @@ import argparse
 parser = argparse.ArgumentParser(description='Visualize the stars from a catalog.')
 parser.add_argument('--cat', dest="cat", action="store", default="",
                         help="Path to catalog of stars.")
-parser.add_argument('--fname', dest="fname", action="store", default="",
-                        help="Path to fits file that contains all the stars.")
+parser.add_argument('--mosaic', dest="fname", action="store", default="",
+                        help="Path to mosaic file that contains all the stars.")
 args = parser.parse_args()
 
 pixscale = 0.05
@@ -142,7 +142,7 @@ def get_cartesian(xloc, yloc, major_axis, angle):
     return x_ends, y_ends
 
 def get_stars(ref, hdr=None):
-    m = (ref['MAG_ISO'] < 26) & (ref['MAG_ISO'] > 15) & (ref['FLUX_RADIUS'] > 2) & (ref['FLUX_RADIUS'] < 3.5) & ((ref['A_IMAGE'] - ref['B_IMAGE']) / (ref['A_IMAGE']+ref['B_IMAGE']) < 0.05)
+    m = (ref['MAG_ISO'] < 26) & (ref['MAG_ISO'] > 15) & (ref['FLUX_RADIUS'] > 2) & (ref['FLUX_RADIUS'] < 3.) & ((ref['A_IMAGE'] - ref['B_IMAGE']) / (ref['A_IMAGE']+ref['B_IMAGE']) < 0.05)
     return ref[m]
     # (ref['FLUX_AUTO']/ref['FLUXERR_AUTO'] > 50) & (ref['FLUX_AUTO']/ref['FLUXERR_AUTO'] < 10000)
 
@@ -158,17 +158,13 @@ plt.xlim(0,10)
 plt.ylim(30,12)
 plt.show()
 
-bm_cat = Table(fits.open('/media/data01/NIRWL/CANDELS_star_catalogs/CANDELS.GOODSS.v2_1.star_wt_gaia.final.fits')[1].data)
-print(bm_cat.colnames)
+#bm_cat = Table(fits.open('/media/data01/NIRWL/CANDELS_star_catalogs/CANDELS.GOODSS.v2_1.star_wt_gaia.final.fits')[1].data)
+#print(bm_cat.colnames)
 mosaic = fits.open(args.fname)[0].data # IMAGE
 wmos = WCS(fits.open(args.fname)[0].header) # WCS
 s = 31 # Postage stamp size
 w = s // 2 # Half the postage stamp
 
-from match_cats import match_cats
-c1_idx, c2_idx, idx, d2d, d3d = match_cats(mosaic_cat['X_WORLD'], mosaic_cat['Y_WORLD'],bm_cat['RA_CANDELS'],bm_cat['DEC_CANDELS'],d2d_lim=1.)
-#mosaic_cat = mosaic_cat[c1_idx]
-#print(mosaic_cat.colnames)
 mosaic_cat = stars
 """
 plt.scatter(mosaic_cat['FLUX_RADIUS']*pixscale, mosaic_cat['MAG_AUTO'], color='black', alpha=0.1, s=5)
