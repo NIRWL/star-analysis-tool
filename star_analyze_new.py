@@ -24,13 +24,14 @@ import matplotlib.widgets
 import argparse
 
 parser = argparse.ArgumentParser(description='Visualize the stars from a catalog.')
-parser.add_argument('--cat', dest="cat", action="store", default="",
+parser.add_argument('--fits_cat', dest="fits_cat", action="store", default="",
                         help="Path to catalog of stars.")
-parser.add_argument('--fname', dest="fname", action="store", default="",
+parser.add_argument('--fits_file', dest="fits_file", action="store", default="",
+                        help="Path to fits file that contains all the stars.")
+parser.add_argument('--bm_cat', dest="bm_cat", action="store", default="",
                         help="Path to fits file that contains all the stars.")
 args = parser.parse_args()
 
-pixscale = 0.05
 
 def first_moment(img, gweighted=False, sigma = 3.):
     xsize = img.shape[1]
@@ -141,39 +142,26 @@ def get_cartesian(xloc, yloc, major_axis, angle):
 
     return x_ends, y_ends
 
-def get_stars(ref, hdr=None):
-    m = (ref['MAG_ISO'] < 26) & (ref['MAG_ISO'] > 15) & (ref['FLUX_RADIUS'] > 2) & (ref['FLUX_RADIUS'] < 3.5) & ((ref['A_IMAGE'] - ref['B_IMAGE']) / (ref['A_IMAGE']+ref['B_IMAGE']) < 0.05)
-    return ref[m]
-    # (ref['FLUX_AUTO']/ref['FLUXERR_AUTO'] > 50) & (ref['FLUX_AUTO']/ref['FLUXERR_AUTO'] < 10000)
-
 try:
-    mosaic_cat = Table(fits.open(args.cat)[2].data)
+    mosaic_cat = Table(fits.open(args.fits_cat)[2].data)
 except IndexError:
-    mosaic_cat = Table(fits.open(args.cat)[1].data)
+    mosaic_cat = Table(fits.open(args.fits_cat)[1].data)
 
-stars = get_stars(mosaic_cat)
-plt.scatter(mosaic_cat['FLUX_RADIUS'], mosaic_cat['MAG_ISO'], color='black', s=5, alpha=0.2)
-plt.scatter(stars['FLUX_RADIUS'], stars['MAG_ISO'], color='red', s=5, alpha=0.5)
-plt.xlim(0,10)
-plt.ylim(30,12)
-plt.show()
-
-bm_cat = Table(fits.open('/media/data01/NIRWL/CANDELS_star_catalogs/CANDELS.GOODSS.v2_1.star_wt_gaia.final.fits')[1].data)
+bm_cat = Table(fits.open(args.bm_cat)[1].data)
 print(bm_cat.colnames)
-mosaic = fits.open(args.fname)[0].data # IMAGE
-wmos = WCS(fits.open(args.fname)[0].header) # WCS
+mosaic = fits.open(args.fits_file)[0].data # IMAGE
+wmos = WCS(fits.open(args.fits_file)[0].header) # WCS
 s = 31 # Postage stamp size
 w = s // 2 # Half the postage stamp
 
 from match_cats import match_cats
 c1_idx, c2_idx, idx, d2d, d3d = match_cats(mosaic_cat['X_WORLD'], mosaic_cat['Y_WORLD'],bm_cat['RA_CANDELS'],bm_cat['DEC_CANDELS'],d2d_lim=1.)
-#mosaic_cat = mosaic_cat[c1_idx]
+mosaic_cat = mosaic_cat[c1_idx]
 #print(mosaic_cat.colnames)
-mosaic_cat = stars
 """
-plt.scatter(mosaic_cat['FLUX_RADIUS']*pixscale, mosaic_cat['MAG_AUTO'], color='black', alpha=0.1, s=5)
+plt.scatter(mosaic_cat['FLUX_RADIUS']*0.05, mosaic_cat['MAG_AUTO'], color='black', alpha=0.1, s=5)
 #plt.scatter(bm_cat['half light radii F160W[pixels]']*0.06, bm_cat['F160W[AB]'])
-plt.scatter(stars['FLUX_RADIUS']*pixscale, stars['MAG_AUTO'], color='blue')
+plt.scatter(stars['FLUX_RADIUS']*0.05, stars['MAG_AUTO'], color='blue')
 #plt.xlim(0,5)
 plt.ylim(30,15)
 plt.xscale('log')
@@ -222,7 +210,7 @@ for i,star in enumerate(mosaic_cat):
     xcens.append(cenx)
     ycens.append(ceny)
 
-    if (star['MAG_AUTO'] > 18) & (star['MAG_AUTO'] < 21) & (ycen == w) & (xcen == w):
+    if (star['MAG_AUTO'] > 18) & (star['MAG_AUTO'] < 20) & (ycen == w) & (xcen == w) & (np.sqrt(e1**2+e2**2) < 0.05):
         good_stars[i] = 1 # Mask out faint and shifted stars
 
     r, sb = radial_profile([post.shape[0]//2, post.shape[1]//2], post)
@@ -250,30 +238,18 @@ med_good = np.median(profs[good_stars], axis=0) # Find the median of only the be
 xcorr = np.dot(profs[:,0:5], med_good.T[0:5]) # xcorr of the inner 5 pixels.
 
 ''' Set conditions in the keepers variable to put constraints onthe catalog '''
-keepers = (xcorr >= 0.99) & (e < 0.05) & (mosaic_cat['MAG_AUTO'] > 16.) & (mosaic_cat['MAG_AUTO'] < 23.5) & (np.abs(xcens) < 1) & (np.abs(ycens) < 1)# | ((xcorr >= 0.999) & (e < 0.05) & (mosaic_cat['MAG_AUTO'] < 22) & (mosaic_cat['MAG_AUTO'] > 17))
+keepers = (xcorr >= 0.98) & (e < 0.05) & (mosaic_cat['MAG_AUTO'] > 18) & (mosaic_cat['MAG_AUTO'] < 24) & (np.abs(xcens) < 0.5) & (np.abs(ycens) < 0.5)# | ((xcorr >= 0.999) & (e < 0.05) & (mosaic_cat['MAG_AUTO'] < 22) & (mosaic_cat['MAG_AUTO'] > 17))
 good_stars = mosaic_cat[keepers]
 print(len(good_stars), 'good stars remain from', len(mosaic_cat))
 test_stars = mosaic_cat[keepers]
 test_stars.add_column(e1s[keepers], name='E1')
 test_stars.add_column(e2s[keepers], name='E2')
-print(np.median(test_stars['E1']))
-print(np.median(test_stars['E2']))
 test_stars.add_column(ws[keepers], name='Width')
 test_stars.remove_column('MAG_APER')
 test_stars.remove_column('MAGERR_APER')
-test_stars.write(f'good_{s}_stars.cat', format='ascii')
+test_stars.write('good_stars.cat', format='ascii')
 hdu = fits.PrimaryHDU(postages[keepers])
-hdu.writeto(f'good_{s}_candels_stars.fits', overwrite=True)
-
-test_stars = mosaic_cat[mosaic_cat['MAG_AUTO'] < 24]
-test_stars.add_column(e1s[mosaic_cat['MAG_AUTO'] < 24], name='E1')
-test_stars.add_column(e2s[mosaic_cat['MAG_AUTO'] < 24], name='E2')
-test_stars.add_column(ws[mosaic_cat['MAG_AUTO'] < 24], name='Width')
-test_stars.remove_column('MAG_APER')
-test_stars.remove_column('MAGERR_APER')
-test_stars.write(f'all_good_{s}_stars.cat', format='ascii')
-hdu = fits.PrimaryHDU(postages[mosaic_cat['MAG_AUTO'] < 24])
-hdu.writeto(f'all_good_{s}_candels_stars.fits', overwrite=True)
+hdu.writeto('good_candels_stars.fits', overwrite=True)
 
 on = True
 if on:
@@ -293,7 +269,7 @@ if on:
     stamp = ax.imshow(np.zeros([s,s]), origin='lower')
 
     sbp = ax1.plot(rs.T,profs.T, color='black', alpha=0.1)
-    ax1.plot(rs[0,:].T,med_good.T, color='blue')
+    ax1.plot(rs[keepers,:].T,profs[keepers,:].T, color='blue', alpha=0.1)
     sbplot, = ax1.plot(0, 0, color='red')
 
     ax1.set_yscale('log')
@@ -359,9 +335,8 @@ if on:
     def update_sb(ind):
         #ax1.clear()
         a = ax1.get_lines()
-        print('SB:', len(a), len(profs))
-        if len(a) > len(profs)+1:
-            a.pop(len(profs)+1).remove()
+        if len(a) > len(mosaic_cat):
+            a.pop(len(mosaic_cat)).remove()
         sbplot, = ax1.plot(rs[ind], profs[ind], color='red')
 
 
@@ -429,13 +404,13 @@ fig = plt.figure(figsize=(5*ratio,5))
 xp, yp = get_cartesian(good_stars['XWIN_IMAGE'], good_stars['YWIN_IMAGE'], e*8000, phi)
 
 for x0,x1,y0,y1 in zip(xp[0], xp[1], yp[0], yp[1]):
-    plt.plot([x0,x1], [y0,y1], color='black', linewidth=2)
+    plt.plot([x0,x1], [y0,y1], color='black', linewidth=1)
     #plt.scatter(x0,y0, color='red')
     #plt.scatter(x1,y1, color='blue')
 
 #plt.xlim(0,20000)
 #plt.ylim(0,20000)
-xp, yp = get_cartesian(plt.xlim()[1]//2, plt.ylim()[1]//2, pixscale*8000, 0.)
+xp, yp = get_cartesian(plt.xlim()[1]//2, plt.ylim()[1]//2, 0.05*8000, 0.)
 plt.plot(xp, yp, color='red', linewidth=1)
 plt.xlabel('X')
 plt.ylabel('Y')
